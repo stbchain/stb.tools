@@ -56,13 +56,14 @@ namespace STB.Tools.SQLToPOCO
         private static void ProcessLines(List<string> lines)
         {
             string lastline = "";
+            string ns = "", folder = "";
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
                 if (i == 0)
                 {
-                    var ns = GetPascalName(line,true);
-                    CreateFolder(ns);
+                    ns = GetPascalName(line,true);
+                    folder = CreateFolder(ns);
                 }
 
                 if (line.StartsWith("CREATE TABLE"))
@@ -80,7 +81,7 @@ namespace STB.Tools.SQLToPOCO
                             Console.WriteLine(line);
                             var name = GetPascalName(line.Replace("CREATE TABLE", ""),false);
                             cls.Name = name;
-                            //class name
+                            cls.Namespace = ns;
                             if (lastline.StartsWith("--"))
                             {
                                 cls.Comment = lastline.Replace("--", "");
@@ -95,12 +96,21 @@ namespace STB.Tools.SQLToPOCO
                         i++;
                     }
 
-                    Console.WriteLine(JsonConvert.SerializeObject(cls));
+                    WriteClassFile(folder, cls);
+                    
                     Console.ReadKey();
                 }
                 lastline = line;
                
             }
+        }
+
+        private static void WriteClassFile(string folder, ClassObject cls)
+        {
+            var filename = Path.Combine(folder, $"{cls.Name}.cs");
+            if (File.Exists(filename)) return;
+
+                
         }
 
         private static void ProcessProperty(ClassObject cls, string line)
@@ -177,7 +187,7 @@ namespace STB.Tools.SQLToPOCO
             }
         }
 
-        static void CreateFolder(string name)
+        static string CreateFolder(string name)
         {
             var root = Path.Combine(Environment.CurrentDirectory, "src");
             var path =
@@ -186,7 +196,7 @@ namespace STB.Tools.SQLToPOCO
                     : Path.Combine(root, name);
             if (!Directory.Exists(path))
                 Directory.CreateDirectory(path);
-            Console.WriteLine(path);
+            return path;
         }
     }
 }
