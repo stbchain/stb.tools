@@ -27,12 +27,14 @@ namespace STB.Tools.SQLToPOCO
                     case "CHAR":
                     case "VARCHAR":
                     case "TEXT":
+                    case "LONGTEXT":
                         return "string";
                     case "timestamp":
                     case "TIMESTAMP":
                         pType = "DateTime";
                         break;
                     case "INT":
+                    case "INTEGER":
                         pType = "int";
                         break;
                     case "TINYINT":

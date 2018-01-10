@@ -213,7 +213,7 @@ namespace STB.Core");
         private static string GetPascalName(string line,bool mustMu)
         {
             if (mustMu && !line.StartsWith("--")) return null;
-            var arr=line.Replace("-", "").Split(' ', '_').Select(c =>
+            var arr=line.Replace("-", "").Replace("`","").Split(' ', '_').Select(c =>
             {
                 if (c.Length > 1)
                 {
