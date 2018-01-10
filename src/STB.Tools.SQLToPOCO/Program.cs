@@ -194,7 +194,16 @@ namespace STB.Core");
             if (line.Contains("DEFAULT"))
             {
                 prop.DefaultValue = line.Split("DEFAULT", StringSplitOptions.RemoveEmptyEntries).LastOrDefault()?
-                    .Replace(",","").Replace("'","");
+                    .Replace(",","").Replace("'","").Trim();
+                if (prop.DefaultValue == "CURRENT_TIMESTAMP")
+                {
+                    prop.DefaultValue = "DateTime.Now";
+                }
+
+                if (prop.PropertyType == "string")
+                {
+                    prop.DefaultValue = $"\"{prop.DefaultValue}\"";
+                }
             }
 
             if (line.Contains("PRIMARY KEY"))
@@ -215,16 +224,14 @@ namespace STB.Core");
             if (mustMu && !line.StartsWith("--")) return null;
             var arr=line.Replace("-", "").Replace("`","").Split(' ', '_').Select(c =>
             {
-                if (c.Length > 1)
+                if (c.Length <= 1) return c;
+                if (c == "mc")
                 {
-                    if (c == "mc")
-                    {
-                        return "MainChain";
-                    }
-                    if (Char.IsLower(c[0]))
-                    {
-                        return Char.ToUpper(c[0]) + c.Substring(1, c.Length - 1);
-                    }
+                    return "MainChain";
+                }
+                if (Char.IsLower(c[0]))
+                {
+                    return Char.ToUpper(c[0]) + c.Substring(1, c.Length - 1);
                 }
                 return c;
             });
