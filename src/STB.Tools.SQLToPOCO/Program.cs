@@ -27,12 +27,12 @@ namespace STB.Tools.SQLToPOCO
             var arrs=Regex.Split(sqlFile,"-- [-]+\n");
             foreach (var block in arrs)
             {
-                Console.ReadKey();
+                //Console.ReadKey();
                 var lines = ReadByLine(block);
                 ProcessLines(lines.ToList());
                 
             }
-            Console.ReadKey();
+            //Console.ReadKey();
         }
 
         private static void CleanSrcFolder(string path)
@@ -98,27 +98,81 @@ namespace STB.Tools.SQLToPOCO
 
                     WriteClassFile(folder, cls);
                     
-                    Console.ReadKey();
+                    //Console.ReadKey();
                 }
                 lastline = line;
                
             }
         }
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="folder"></param>
+        /// <param name="cls"></param>
         private static void WriteClassFile(string folder, ClassObject cls)
         {
             var filename = Path.Combine(folder, $"{cls.Name}.cs");
             if (File.Exists(filename)) return;
+            var sb = new StringBuilder();
+            sb.Append(@"/*---------------------------------------------------------------------------------------------
+ * Copyright (c) STB Chain. All rights reserved.
+ * Licensed under the Source EULA. See License in the project root for license information.
+ * Source code : https://github.com/stbchain
+ * Website : http://www.soft2b.com/
+ *---------------------------------------------------------------------------------------------
+ ---------------------------------------------------------------------------------------------*/
+using System;
 
-                
+namespace STB.Core");
+            if (!string.IsNullOrWhiteSpace(cls.Namespace))
+            {
+                sb.Append($".{cls.Namespace}");
+            }
+
+            sb.AppendLine().AppendLine("{");//begin ns
+            if (!string.IsNullOrWhiteSpace(cls.Comment))
+            {
+                sb.AppendLine("\t/// <summary>");
+                sb.AppendLine($"\t/// {cls.Comment}");
+                sb.AppendLine("\t/// </summary>");
+            }
+            sb.AppendLine($"\tpublic class {cls.Name}");
+            sb.AppendLine("\t{");//begin class
+            foreach (var prop in cls.Properties)
+            {
+                if (string.IsNullOrWhiteSpace(prop.PropertyName)) continue;
+                if (!string.IsNullOrWhiteSpace(prop.Comment))
+                {
+                    sb.AppendLine("\t\t/// <summary>");
+                    sb.AppendLine($"\t\t/// {prop.Comment}");
+                    sb.AppendLine("\t\t/// </summary>");
+                }
+                sb.Append($"\t\tpublic {prop.PropertyType} {prop.PropertyName} {{get;set;}}");
+                if (prop.DefaultValue != null)
+                {
+                    sb.Append($" = {prop.DefaultValue};");
+                }
+
+                sb.AppendLine();
+            }
+            sb.AppendLine("\t}");//close class
+            sb.AppendLine("}");//close namespace
+            Console.WriteLine(sb.ToString());
+            File.WriteAllText(filename, sb.ToString());
+
         }
 
         private static void ProcessProperty(ClassObject cls, string line)
         {
-            if (line.StartsWith("--") ||
-                line.StartsWith("PRIMARY KEY") ||
-                line.StartsWith("FOREIGN KEY") ||
-                line.StartsWith("CONSTRAINT")) return;
+            var skipStarts = new[]
+            {
+                "--",
+                "UNIQUE",
+                "PRIMARY KEY",
+                "FOREIGN KEY",
+                "CONSTRAINT"
+            };
+            if (skipStarts.Any(line.StartsWith)) return;
             var arr = line.Split(' ');
             var prop = new PropertyObject();
             prop.PropertyName = GetPascalName(arr[0],false);

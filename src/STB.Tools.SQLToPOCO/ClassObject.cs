@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace STB.Tools.SQLToPOCO
 {
@@ -17,7 +18,34 @@ namespace STB.Tools.SQLToPOCO
 
         public string PropertyType
         {
-            get { return RawType+"1"; }
+            get
+            {
+                var type = RawType.Split("(").FirstOrDefault();
+                var pType = "";
+                switch (type)
+                {
+                    case "CHAR":
+                    case "VARCHAR":
+                    case "TEXT":
+                        return "string";
+                    case "timestamp":
+                    case "TIMESTAMP":
+                        pType = "DateTime";
+                        break;
+                    case "INT":
+                        pType = "int";
+                        break;
+                    case "TINYINT":
+                        pType = "byte";
+                        break;
+                }
+
+                if (string.IsNullOrWhiteSpace(pType))
+                    return $"error:{RawType}";
+                if (IsNotNull)
+                    pType += "?";
+                return pType;
+            }
         }
 
         public string PropertyName { get; set; }
