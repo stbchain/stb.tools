@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json;
 
 namespace STB.Tools.SQLToPOCO
 {
@@ -54,23 +55,105 @@ namespace STB.Tools.SQLToPOCO
 
         private static void ProcessLines(List<string> lines)
         {
+            string lastline = "";
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
                 if (i == 0)
                 {
-                    CreateFolder(GetPascalName(line));
+                    var ns = GetPascalName(line,true);
+                    CreateFolder(ns);
                 }
+
+                if (line.StartsWith("CREATE TABLE"))
+                {
+                  
+                    var j = 0;
+                    var cls = new ClassObject();
+                    while (!line.StartsWith(");"))
+                    {
+                        line = lines[i];
+                        if (line.StartsWith(");"))
+                            break;
+                        if (j == 0)
+                        {
+                            Console.WriteLine(line);
+                            var name = GetPascalName(line.Replace("CREATE TABLE", ""),false);
+                            cls.Name = name;
+                            //class name
+                            cls.Comment = null;
+                        }
+                        else
+                        {
+                            ProcessProperty(cls, line);
+                        }
+
+                        j++;
+                        i++;
+                    }
+
+                    Console.WriteLine(JsonConvert.SerializeObject(cls));
+                    Console.ReadKey();
+                }
+                lastline = line;
+               
             }
         }
 
-        private static string GetPascalName(string line)
+        private static void ProcessProperty(ClassObject cls, string line)
         {
-            if (!line.StartsWith("--")) return null;
-            var arr=line.Replace("-", "").Split(" ").Select(c =>
+            if (line.StartsWith("--") ||
+                line.StartsWith("PRIMARY KEY") ||
+                line.StartsWith("FOREIGN KEY") ||
+                line.StartsWith("CONSTRAINT")) return;
+            var arr = line.Split(' ');
+            var prop = new PropertyObject();
+            prop.PropertyName = GetPascalName(arr[0],false);
+            try
+            {
+                prop.RawType = arr[1];
+            }
+            catch
+            {
+                Console.WriteLine(line);
+                throw;
+            }
+
+            if (line.Contains("-- "))
+            {
+                prop.Comment = line.Split("--", StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+            }
+
+            if (line.Contains("DEFAULT"))
+            {
+                prop.DefaultValue = line.Split("DEFAULT", StringSplitOptions.RemoveEmptyEntries).LastOrDefault()?
+                    .Replace(",","").Replace("'","");
+            }
+
+            if (line.Contains("PRIMARY KEY"))
+            {
+                prop.IsPrimary = true;
+            }
+
+            if (line.Contains("NOT NULL"))
+            {
+                prop.IsNotNull = true;
+            }
+
+            cls.Properties.Add(prop);
+        }
+
+        private static string GetPascalName(string line,bool mustMu)
+        {
+            if (mustMu && !line.StartsWith("--")) return null;
+            var arr=line.Replace("-", "").Split(' ', '_').Select(c =>
             {
                 if (c.Length > 1)
                 {
+                    if (c == "mc")
+                    {
+                        return "MainChain";
+                    }
                     if (Char.IsLower(c[0]))
                     {
                         return Char.ToUpper(c[0]) + c.Substring(1, c.Length - 1);
@@ -78,7 +161,7 @@ namespace STB.Tools.SQLToPOCO
                 }
                 return c;
             });
-            return string.Join("", arr);
+            return string.Join("", arr).Replace("(", "");
         }
 
         private static IEnumerable<string> ReadByLine(string block)
