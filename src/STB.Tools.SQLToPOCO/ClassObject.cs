@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 
 namespace STB.Tools.SQLToPOCO
@@ -20,7 +19,7 @@ namespace STB.Tools.SQLToPOCO
         {
             get
             {
-                var type = RawType.Replace(",","").Split("(").FirstOrDefault();
+                var type = RawType.Replace(",", "").Split("(").FirstOrDefault();
                 var pType = "";
                 switch (type)
                 {

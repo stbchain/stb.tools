@@ -4,14 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using Newtonsoft.Json;
 
 namespace STB.Tools.SQLToPOCO
 {
-    class Program
+    internal class Program
     {
-
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             if (args.Length == 0)
             {
@@ -23,15 +21,15 @@ namespace STB.Tools.SQLToPOCO
             var root = Path.Combine(Environment.CurrentDirectory, "src");
             CleanSrcFolder(root);
             var sqlFile = File.ReadAllText(args[0]);
-            
-            var arrs=Regex.Split(sqlFile,"-- [-]+\n");
+
+            var arrs = Regex.Split(sqlFile, "-- [-]+\n");
             foreach (var block in arrs)
             {
                 //Console.ReadKey();
                 var lines = ReadByLine(block);
                 ProcessLines(lines.ToList());
-                
             }
+
             //Console.ReadKey();
         }
 
@@ -39,36 +37,28 @@ namespace STB.Tools.SQLToPOCO
         {
             if (Directory.Exists(path))
             {
-                foreach (var file in Directory.GetFiles(path))
-                {
-                    File.Delete(file);
-                }
+                foreach (var file in Directory.GetFiles(path)) File.Delete(file);
 
-                foreach (var directory in Directory.GetDirectories(path))
-                {
-                    CleanSrcFolder(directory);
-                }
+                foreach (var directory in Directory.GetDirectories(path)) CleanSrcFolder(directory);
                 Directory.Delete(path);
             }
-            
         }
 
         private static void ProcessLines(List<string> lines)
         {
-            string lastline = "";
+            var lastline = "";
             string ns = "", folder = "";
-            for (int i = 0; i < lines.Count; i++)
+            for (var i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
                 if (i == 0)
                 {
-                    ns = GetPascalName(line,true);
+                    ns = GetPascalName(line, true);
                     folder = CreateFolder(ns);
                 }
 
                 if (line.StartsWith("CREATE TABLE"))
                 {
-                  
                     var j = 0;
                     var cls = new ClassObject();
                     while (!line.StartsWith(");"))
@@ -79,13 +69,10 @@ namespace STB.Tools.SQLToPOCO
                         if (j == 0)
                         {
                             Console.WriteLine(line);
-                            var name = GetPascalName(line.Replace("CREATE TABLE", ""),false);
+                            var name = GetPascalName(line.Replace("CREATE TABLE", ""), false);
                             cls.Name = name;
                             cls.Namespace = ns;
-                            if (lastline.StartsWith("--"))
-                            {
-                                cls.Comment = lastline.Replace("--", "");
-                            }
+                            if (lastline.StartsWith("--")) cls.Comment = lastline.Replace("--", "");
                         }
                         else
                         {
@@ -97,15 +84,15 @@ namespace STB.Tools.SQLToPOCO
                     }
 
                     WriteClassFile(folder, cls);
-                    
+
                     //Console.ReadKey();
                 }
+
                 lastline = line;
-               
             }
         }
+
         /// <summary>
-        /// 
         /// </summary>
         /// <param name="folder"></param>
         /// <param name="cls"></param>
@@ -124,20 +111,18 @@ namespace STB.Tools.SQLToPOCO
 using System;
 
 namespace STB.Core");
-            if (!string.IsNullOrWhiteSpace(cls.Namespace))
-            {
-                sb.Append($".{cls.Namespace}");
-            }
+            if (!string.IsNullOrWhiteSpace(cls.Namespace)) sb.Append($".{cls.Namespace}");
 
-            sb.AppendLine().AppendLine("{");//begin ns
+            sb.AppendLine().AppendLine("{"); //begin ns
             if (!string.IsNullOrWhiteSpace(cls.Comment))
             {
                 sb.AppendLine("\t/// <summary>");
                 sb.AppendLine($"\t/// {cls.Comment}");
                 sb.AppendLine("\t/// </summary>");
             }
+
             sb.AppendLine($"\tpublic class {cls.Name}");
-            sb.AppendLine("\t{");//begin class
+            sb.AppendLine("\t{"); //begin class
             foreach (var prop in cls.Properties)
             {
                 if (string.IsNullOrWhiteSpace(prop.PropertyName)) continue;
@@ -147,19 +132,17 @@ namespace STB.Core");
                     sb.AppendLine($"\t\t/// {prop.Comment}");
                     sb.AppendLine("\t\t/// </summary>");
                 }
+
                 sb.Append($"\t\tpublic {prop.PropertyType} {prop.PropertyName} {{get;set;}}");
-                if (prop.DefaultValue != null)
-                {
-                    sb.Append($" = {prop.DefaultValue};");
-                }
+                if (prop.DefaultValue != null) sb.Append($" = {prop.DefaultValue};");
 
                 sb.AppendLine();
             }
-            sb.AppendLine("\t}");//close class
-            sb.AppendLine("}");//close namespace
+
+            sb.AppendLine("\t}"); //close class
+            sb.AppendLine("}"); //close namespace
             Console.WriteLine(sb.ToString());
             File.WriteAllText(filename, sb.ToString());
-
         }
 
         private static void ProcessProperty(ClassObject cls, string line)
@@ -175,7 +158,7 @@ namespace STB.Core");
             if (skipStarts.Any(line.StartsWith)) return;
             var arr = line.Split(' ');
             var prop = new PropertyObject();
-            prop.PropertyName = GetPascalName(arr[0],false);
+            prop.PropertyName = GetPascalName(arr[0], false);
             try
             {
                 prop.RawType = arr[1];
@@ -187,52 +170,32 @@ namespace STB.Core");
             }
 
             if (line.Contains("-- "))
-            {
                 prop.Comment = line.Split("--", StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
-            }
 
             if (line.Contains("DEFAULT"))
             {
                 prop.DefaultValue = line.Split("DEFAULT", StringSplitOptions.RemoveEmptyEntries).LastOrDefault()?
-                    .Replace(",","").Replace("'","").Trim();
-                if (prop.DefaultValue == "CURRENT_TIMESTAMP")
-                {
-                    prop.DefaultValue = "DateTime.Now";
-                }
+                    .Replace(",", "").Replace("'", "").Trim();
+                if (prop.DefaultValue == "CURRENT_TIMESTAMP") prop.DefaultValue = "DateTime.Now";
 
-                if (prop.PropertyType == "string")
-                {
-                    prop.DefaultValue = $"\"{prop.DefaultValue}\"";
-                }
+                if (prop.PropertyType == "string") prop.DefaultValue = $"\"{prop.DefaultValue}\"";
             }
 
-            if (line.Contains("PRIMARY KEY"))
-            {
-                prop.IsPrimary = true;
-            }
+            if (line.Contains("PRIMARY KEY")) prop.IsPrimary = true;
 
-            if (line.Contains("NOT NULL"))
-            {
-                prop.IsNotNull = true;
-            }
+            if (line.Contains("NOT NULL")) prop.IsNotNull = true;
 
             cls.Properties.Add(prop);
         }
 
-        private static string GetPascalName(string line,bool mustMu)
+        private static string GetPascalName(string line, bool mustMu)
         {
             if (mustMu && !line.StartsWith("--")) return null;
-            var arr=line.Replace("-", "").Replace("`","").Split(' ', '_').Select(c =>
+            var arr = line.Replace("-", "").Replace("`", "").Split(' ', '_').Select(c =>
             {
                 if (c.Length <= 1) return c;
-                if (c == "mc")
-                {
-                    return "MainChain";
-                }
-                if (Char.IsLower(c[0]))
-                {
-                    return Char.ToUpper(c[0]) + c.Substring(1, c.Length - 1);
-                }
+                if (c == "mc") return "MainChain";
+                if (char.IsLower(c[0])) return char.ToUpper(c[0]) + c.Substring(1, c.Length - 1);
                 return c;
             });
             return string.Join("", arr).Replace("(", "");
@@ -242,13 +205,11 @@ namespace STB.Core");
         {
             var lines = block.Split("\n");
             foreach (var line in lines)
-            {
                 if (!string.IsNullOrWhiteSpace(line))
                     yield return line.Trim();
-            }
         }
 
-        static string CreateFolder(string name)
+        private static string CreateFolder(string name)
         {
             var root = Path.Combine(Environment.CurrentDirectory, "src");
             var path =
