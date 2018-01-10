@@ -81,7 +81,10 @@ namespace STB.Tools.SQLToPOCO
                             var name = GetPascalName(line.Replace("CREATE TABLE", ""),false);
                             cls.Name = name;
                             //class name
-                            cls.Comment = null;
+                            if (lastline.StartsWith("--"))
+                            {
+                                cls.Comment = lastline.Replace("--", "");
+                            }
                         }
                         else
                         {
