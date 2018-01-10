@@ -20,7 +20,7 @@ namespace STB.Tools.SQLToPOCO
         {
             get
             {
-                var type = RawType.Split("(").FirstOrDefault();
+                var type = RawType.Replace(",","").Split("(").FirstOrDefault();
                 var pType = "";
                 switch (type)
                 {
@@ -36,6 +36,9 @@ namespace STB.Tools.SQLToPOCO
                     case "INT":
                     case "INTEGER":
                         pType = "int";
+                        break;
+                    case "BIGINT":
+                        pType = "long";
                         break;
                     case "TINYINT":
                         pType = "byte";
